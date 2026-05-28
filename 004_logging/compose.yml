@@ -1,0 +1,20 @@
+services:
+  grafana:
+    image: grafana/grafana-enterprise
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - /srv/observability/grafana:/var/lib/grafana
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:3.7.0
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - /srv/observability/loki:/mnt/config
+      - /srv/observability/loki/data:/loki
+    command: -config.file=/mnt/config/loki-config.yaml
+    restart: unless-stopped

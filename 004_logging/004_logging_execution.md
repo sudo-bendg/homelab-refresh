@@ -29,7 +29,7 @@ C --> S
 V <---> S
 ```
 
-Now we need to go about the business of making this happen. To me, it makes sense for Loki to be the first thing we set up. Vector will need somewhere to point to, and Grafana will need something to fetch from. Also, having something running on `lebesgue` is 
+Now we need to go about the business of making this happen. To me, it makes sense for Loki to be the first thing we set up. Vector will need somewhere to point to, and Grafana will need something to fetch from. Also, having something running on `lebesgue` is going to be a good proof of concept that this less powerful machine can still be useful to us.
 
 ## Loki Installation
 
@@ -125,6 +125,33 @@ curl -X POST -H "Content-Type: application/json" \
 
 Send off this cURL, look at your Grafana logs, and with a bit of luck, we are sorted.
 
+## Docker Compose
+
+For the sake of keeping things simple and maintainable, I would like to avoid trying to remember my Docker commands all the time. Instead, I can put my config into a Docker Compose file. Doing this, with a few minor changes, we get the following file:
+
+```yaml
+services:
+  grafana:
+    image: grafana/grafana-enterprise
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - /srv/observability/grafana:/var/lib/grafana
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:3.7.0
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - /srv/observability/loki:/mnt/config
+      - /srv/observability/loki/data:/loki
+    command: -config.file=/mnt/config/loki-config.yaml
+    restart: unless-stopped
+```
+
 ## Vector Installation
 
 As previously mentioned, all of my machines are either Debian or Ubuntu machines, meaning that I can use `apt` to install Vector. This method of installation is available [here](https://vector.dev/docs/setup/installation/package-managers/apt/). 
@@ -154,7 +181,7 @@ sinks:
       codec: text
     labels:
       job: vector
-      host: "<machine's name here, whatever it may be>"
+        host: "<machine's name here, whatever it may be>"
 ```
 
 In theory, I should be able to start up the vector service using `systemctl` by firing off a `systemctl start vector` command. In line with the precident which has been set, we meet some errors at this point. In particular, looking at the logs for vector after trying to start it, we can see that it is closing pretty soon after it is started. There is not so much a blatant error at play, it just seems that Vector is not staying alive. After some digging, I decided that I need to explicity tell systemctl to treat Vector as a service and keep it alive. We can do this with a `systemctl edit vector` update:
